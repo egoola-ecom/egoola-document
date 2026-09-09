@@ -1,0 +1,16 @@
+{
+    "name": "egoola/db-migration-tool",
+    "description": "Standalone tool: migrates data from the legacy Egoola schema into the redesigned schema. Not part of the main webapp Laravel app.",
+    "type": "project",
+    "require": {
+        "php": "^7.2.5|^8.0",
+        "illuminate/database": "^7.0",
+        "illuminate/support": "^7.0",
+        "vlucas/phpdotenv": "^4.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Egoola\\Migration\\": "src/"
+        }
+    }
+}
