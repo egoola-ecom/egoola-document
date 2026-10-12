@@ -1,0 +1,514 @@
+# Egoola Rebuild — Phase Tracker
+
+**The implementation plan, phase by phase, layer by layer, task by task.** This is the living task list for the Egoola.com rebuild.
+
+- **Revision 3 — October 12, 2026.** Converted from the Word file (`Egoola Rebuild Phase Tracker.docx`, Revision 2, September 16, 2026). Every task and status was copied as it was; the backend updates made since then are marked in the Notes column and in the change log at the bottom.
+- **This file is now the one place to update.** The Word file is frozen as an archive and is no longer edited.
+- For architecture and design decisions, see the separate *Egoola Rebuild Guideline* document. For a short overview of the whole platform, see `Egoola_Knowledge_Brief.md`.
+
+## How to update this file
+
+1. Find the task in its phase and layer table (sections 2.1 – 2.7) and change the **Status**. Use only these words:
+   `Not started`, `In progress`, `Completed`, `Skipped`, `Postponed`, `Will Do by Myself`, `N/A`.
+2. Write a short line in **Notes** when it helps someone else: what was built, where its guide and Postman collection are, what is left.
+3. A task can be split with a decimal number (for example `5.1`) when work grows. Add missing steps freely. This list is not fixed.
+4. Every phase keeps a **smoke-test step** and an **end-of-phase confirmation** step. If one is missing, add it.
+5. Add one line to the **Change log** at the bottom for each batch of updates (date, what changed).
+6. Commit the file with the work it describes.
+
+> The live board (https://claude.ai/artifact/GnaqbbNtak57WMrD3wVyvj) is a **read-only view** generated from this file (it has no editing of its own). It only changes when it is regenerated, so after a batch of updates ask the Backend session to refresh it. When this file and the board disagree, **this file wins**.
+
+## Status words
+
+| Status | Meaning |
+|---|---|
+| Not started | Nobody has begun. |
+| In progress | Work has started but is not finished. |
+| Completed | Finished and checked. |
+| Skipped | Decided not to do it. |
+| Postponed | Will be done later (see the Notes). |
+| Will Do by Myself | The project owner will do it. |
+| N/A | No work in this phase for this layer. |
+
+---
+
+## 1. Phase Overview
+
+This document tracks the phased implementation plan for the Egoola rebuild, and the status of every individual task inside it. For the architecture and the reasoning behind these decisions, see the separate Egoola Rebuild Guideline document. This plan is based on an earlier phased plan that had already been agreed before. We are keeping the same order of phases, but we are updating what each phase includes. This section gives a short summary of each phase. Section 2, right after this table, breaks each one of these phases down into a full, detailed list of individual tasks, organized by which part of the system each task belongs to (Backend, Admin Web, Seller Web, Seller App, Buyer Web, Buyer App), with a status for each one, so progress can be tracked over time.
+
+| Phase | What happens in this phase |
+|---|---|
+| 0 — Getting set up | Create the Django project, with its 10 apps and their models built from the Database Redesign document (see the Planning document, Section 4.1). Connect the backend to a local PostgreSQL database. Create the Next.js project (Planning document, Section 4.4) and the two Flutter projects, egoola-app and egoola-seller (Planning document, Section 4.5). Set up drf-spectacular, CORS, JWT login, Django Admin, and a CI pipeline. Docker is not needed at this stage. See Section 2.1, right after this table, for the full, detailed breakdown of this phase, task by task. |
+| 1 — The shared foundation | Build the geography app first (countries, states or divisions, cities, and thanas or unions), using the data that has already been redesigned. Then build the accounts app: the three login types (Admin, Seller, and User/buyer), along with OTP verification. Then build the notifications app, including the connection to Firebase Cloud Messaging for both phone apps. |
+| 2 — The admin panel | Build a full, working version of the admin panel: reviewing and approving listings, verifying sellers, handling money and seller payouts, and managing site content such as banners and settings. This should follow the existing Admin Panel Specification document, one section at a time. As explained further down, the admin panel does not need a mobile version. |
+| 3 — The seller panel | Build the seller side of the app: signing up, verifying a business, creating and managing every type of listing, handling bids, fulfilling orders, and managing the seller's wallet and withdrawal requests. This should follow the existing Seller Panel Specification document. Once each part of this is working on the website, build the matching screens in the dedicated seller app, using the same API. |
+| 4 — The buyer panel | Build the buyer side of the app: browsing and searching, using the cart and checkout, hiring a seller or placing a bid, tracking orders, messaging sellers, and leaving reviews. This is the biggest of all the phases, and it is also where most of the bug fixes found during the earlier review will be put in place. This should follow the existing Customer/Buyer Panel Specification document. Once each part of this is working on the website, build the matching screens in egoola-app, using the same API. |
+| 5 — Moving the real data over | Take the migration tool that already exists, inside egoola-document/migration. Right now, it copies data from the old MySQL database into a new MySQL database. Change its settings so that it copies the data into PostgreSQL instead. The tool is built on top of a library that already knows how to talk to PostgreSQL, so this should mostly be a small settings change, not a full rewrite. |
+| 6 — Integration, hardening, and final QA | Connect Stripe and bKash properly on the server side. Go through every “Critical” bug found during the earlier review of the old app, one by one, and confirm each one has actually been fixed. Test a full, real example from start to finish, across every panel. Do a final review of the whole system against this guideline. |
+
+> **Why the order of these phases matters.** Just like in the original plan: the admin panel needs to exist before the seller panel can be fully tested, because a new seller needs an admin to approve their account first. And the seller panel needs to exist before the buyer panel can be fully tested, because a buyer needs approved sellers and approved listings to actually be able to buy something. Because of this, please do not start building Phase 4 before Phase 3's listings and seller-approval steps are already working.
+
+About timing for the two Flutter apps: each one should be built after the matching API for a given feature already exists and is working. There is no need to build a phone screen and its matching API at the exact same time. In practice, this means that most of the dedicated seller app's work happens alongside, or just behind, Phase 3, and most of egoola-app's work happens alongside, or just behind, Phase 4, each reusing the same API endpoints that the website already uses. Neither app needs a version of the admin panel — it stays web-only, since it will only ever be used by staff working at a desk, not out in the field the way a seller or a buyer might be.
+
+## 2. Full Task Tracker, By Phase
+
+This section lists every phase, broken down first by phase, and then by which part of the system each task belongs to: Backend, Admin Web, Seller Web, Seller App, Buyer Web (Egoola Web), and Buyer App (Egoola App). A phase that has no work for a given part of the system still shows that section, marked “No tasks in this phase,” so the full structure stays visible and consistent across every phase.
+
+Every task starts with the status “Not started.” As work moves forward, update each task's status directly in this document, to “In progress” or “Completed.” The Notes column is left empty on purpose — add a short description directly in that column for any task that needs one.
+
+### 2.1 Phase 0 — Getting Set Up
+
+A note before the steps below: this list is not fixed. Some of these steps may turn out to be unnecessary and get removed, and many more steps may need to be added, as the work actually happens.
+
+#### 2.1.1 Backend
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Create the Django project. Read every entity from the Database Redesign document and build it as a Django ORM model. Add the 10 apps, per the current plan (see the Planning document, Section 4.1). |  | Completed |
+| 2 | Set up API versioning, so every endpoint starts with /api/v1/ (see the Planning document, Section 4.3). |  | Completed |
+| 3 | Create a local PostgreSQL database, and connect the backend to it. Create every table through the backend, using the ORM (Django's migrate command) — not by hand-writing SQL. |  | Completed |
+| 4 | Skip Docker for now — it is not needed at this stage (see the Planning document, Section 5). |  | Skipped |
+| 5 | Install and set up drf-spectacular, so the API documentation is available at /api/docs/. |  | Completed |
+| 6 | Set up CORS, so egoola-web can talk to egoola-server (see the Planning document, Section 5). |  | Completed |
+| 7 | Set up JWT-based login (djangorestframework-simplejwt). |  | Completed |
+| 8 | Turn on Django Admin, for internal use by the development team only. |  | Completed |
+| 9 | Set up a basic CI (continuous integration) pipeline for the backend repository. |  | Completed |
+| 10 | Create a Firebase project, ready for push notifications later in Phase 1. |  | Skipped |
+| 11 | Do a quick end-to-end check across all four projects: confirm the backend connects to the local PostgreSQL database, the website can reach the backend's API, and both Flutter apps can reach the backend's API too. |  | Will Do by Myself |
+| 12 | Commit and push. |  | Completed |
+| 13 | Review the code, and run smoke tests. |  | Completed |
+| 14 | Get confirmation before moving on to Phase 1. |  | Completed |
+
+#### 2.1.2 Admin Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Create the Next.js project, with its four page groups: (public), (buyer), (seller), and (admin). This one project is shared by the Admin Web, Seller Web, and Buyer Web sections below. |  | Completed |
+| 2 | Set up every admin-related route under the admin/ path (for example, admin/login), kept separate from the shared buyer/seller login (see the Planning document, Section 4.4). |  | Completed |
+| 3 | Set up a basic CI pipeline for the website repository. |  | Completed |
+| 4 | Commit and push. |  | Completed |
+| 5 | Get confirmation before moving on. |  | Completed |
+
+#### 2.1.3 Seller Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Uses the same Next.js project created under Admin Web above — no separate project setup is needed in this phase. |  | Completed |
+| 2 | Confirm the (seller) route group is scaffolded, and that seller routes will share the same login/registration pages as buyer routes, separated by a tab. |  | Completed |
+| 3 | Get confirmation before moving on. |  | Completed |
+
+#### 2.1.4 Seller App
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Create the egoola-seller Flutter project, using the tools and folder structure listed in the Planning document (Section 4.5). |  | Not started |
+| 2 | Set up a basic CI pipeline for the egoola-seller repository. |  | Not started |
+| 3 | Commit and push. |  | Not started |
+| 4 | Get confirmation before moving on. |  | Not started |
+
+#### 2.1.5 Buyer Web (Egoola Web)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Uses the same Next.js project created under Admin Web above — no separate project setup is needed in this phase. |  | Completed |
+| 2 | Confirm the (buyer) and (public) route groups are scaffolded, and that buyer routes will share the same login/registration pages as seller routes, separated by a tab. |  | Completed |
+| 3 | Get confirmation before moving on. |  | Completed |
+
+#### 2.1.6 Buyer App (Egoola App)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Create the egoola-app Flutter project, using the tools and folder structure listed in the Planning document (Section 4.5). |  | Not started |
+| 2 | Set up a basic CI pipeline for the egoola-app repository. |  | Not started |
+| 3 | Commit and push. |  | Not started |
+| 4 | Get confirmation before moving on to Phase 1. |  | Not started |
+
+### 2.2 Phase 1 — The Shared Foundation
+
+A note before the steps below: this list is not fixed. Some of these steps may turn out to be unnecessary and get removed, and many more steps may need to be added, as the work actually happens.
+
+#### 2.2.1 Backend
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the accounts app with these models: Admin, Seller and Buyer |  | Completed |
+| 2 | Build three separate JWT-based login flows: Admin, Seller, and Buyer/User. |  | Completed |
+| 3 | Build the OTP verification structure inside the accounts app, for both email and phone. The actual OTP validation logic does not need to be fully built yet — just structure things so OTPs can be validated once the validation mechanism is added later. |  | Skipped |
+| 4 | Build the geography app with these models: Country, State, City, and Thana, and fill them in using the already-redesigned geography data. |  | Completed |
+| 5 | Build the Category model inside the catalog app, as one single, unified tree that covers both products and services, replacing the old app's two separate, duplicated category trees. |  | Completed |
+| 6 | Build the Measurement model inside the catalog app. |  | Completed |
+| 7 | Turn on PostgreSQL's JSONB feature for every model field that stores JSON data. |  | Completed |
+| 8 | After ensuring JSONB feature every JSON data model add GIN indexes to those fields, to keep querying and filtering fast. |  | Skipped |
+| 9 | Build the notifications app, and prepare its structure so it is ready to connect to Firebase Cloud Messaging (FCM) later. Leave the actual FCM connection for later, since the required service/subscription has not been purchased yet. |  | Skipped |
+| 10 | Review the code, and run smoke tests: confirm the geography, category, and measurement models save and query correctly, JSONB fields store and filter properly, and the notifications app can create and list a basic record. |  | Not started |
+| 11 | Review the code, and run smoke tests: confirm JSONB fields store and filter properly, and the notifications app can create and list a basic record. |  | Skipped |
+| 12 | Get confirmation before moving on. |  | Completed |
+
+#### 2.2.2 Admin Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Review the existing login flow in the current codebase, and study the current CSS, styling, and UI structure in detail, so the new admin login page stays consistent with the current theme. |  | Completed |
+| 2 | Build the admin login page, under the admin/ route (for example, admin/login). |  | Completed |
+| 3 | Build Geography CRUD screens inside the Admin UI. |  | Completed |
+| 4 | Build Category CRUD screens inside the Admin UI. |  | Completed |
+| 5 | Build the Measurement management screen inside the Admin panel. |  | Completed |
+| 6 | Test the complete login flow for Admin. |  | Completed |
+| 7 | Run smoke tests on the Geography, Category, and Measurement CRUD screens (create, edit, list, and delete for each). |  | Completed |
+| 8 | Get confirmation before moving on. |  | Completed |
+
+#### 2.2.3 Seller Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Review the existing registration and login flows, and study the current CSS/styling, so the new seller registration and login pages stay consistent with the current theme. |  | Not started |
+| 2 | Build the seller registration and login pages on the website, sharing the same pages as buyer registration/login, separated by a tab. |  | Not started |
+| 3 | Test the complete registration and login flow for Seller, on the website. |  | Not started |
+| 4 | Get confirmation before moving on. |  | Not started |
+
+#### 2.2.4 Seller App
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the seller registration and login screens in the egoola-seller app. |  | Not started |
+| 2 | Test the complete registration and login flow for Seller, on the seller app. |  | Not started |
+| 3 | Get confirmation before moving on. |  | Not started |
+
+#### 2.2.5 Buyer Web (Egoola Web)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Review the existing registration and login flows, and study the current CSS/styling, so the new buyer registration and login pages stay consistent with the current theme. |  | Not started |
+| 2 | Build the buyer registration and login pages on the website, sharing the same pages as seller registration/login, separated by a tab. |  | Not started |
+| 3 | Test the complete registration and login flow for Buyer/User, on the website. |  | Not started |
+| 4 | Get confirmation before moving on. |  | Not started |
+
+#### 2.2.6 Buyer App (Egoola App)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the buyer registration and login screens in egoola-app. |  | Not started |
+| 2 | Test the complete registration and login flow for Buyer/User, on the buyer app. |  | Not started |
+| 3 | Get confirmation before moving on to Phase 2. |  | Not started |
+
+### 2.3 Phase 2 — The Admin Panel
+
+Based on the existing Admin Panel Specification document.
+
+A note before the steps below: this list is not fixed. Some of these steps may turn out to be unnecessary and get removed, and many more steps may need to be added, as the work actually happens.
+
+#### 2.3.1 Backend
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the API for the Admin Dashboard's data. |  | Not started |
+| 2 | Build the Seller Management API: create, update, list (with filters), and view details for a seller. |  | Completed |
+| 3 | Seller verification — reviewing and approving new seller sign-ups. |  | Completed |
+| 4 | Build listing moderation, as one single system that works for every kind of listing, instead of the old app's separate, duplicated moderation system for five different listing formats. |  | Completed |
+| 5 | Build the Brand Management API under the Listing module — create, update, list (filter by name), and delete — with its own brands table (name, unique slug, isActive, creator details). Listings now pick their brand from this list instead of typing it, and a brand listing must have one. Also in this step: a listing's seller/buyer became optional (Admin-created listings), and oldPrice was renamed to discountedPrice (price stays the original price) on listings and price tiers. | Brand only at this step. Attributes and listing SKUs were built afterwards (next row). | Completed |
+| 5.1 | Attributes, attribute values and listing SKUs: Size / Colour options, one SKU per combination with its own price, discount window and stock. | Attribute and value CRUD (English + optional Bangla); SKUs and variants inside the Listing API (update by id, SKUs are hidden not deleted); price, discount and stock moved off listings. Guide: docs/attribute-sku-guide.md. Postman: Egoola-Attribute. | Completed |
+| 6 | Build the Buyer/User Management API: create, update, list (with filters), and view details. |  | Completed |
+| 7 | Build the Admin Management API: an admin can create, update, list, and view details for other admins. Keep the two admin roles — super-admin and admin — and only allow super-admins to use Admin Management. |  | Completed |
+| 8 | Build the financial oversight API: reviewing withdrawal requests, refunds, and commission settings. | Postponed — will be done later. | Not started |
+| 9 | Build the site settings and CMS API: banners, email templates, and the site logo. | Banners, email templates, generic site settings and the site logo. Guide: docs/cms-api-guide.md. Postman: Egoola-CMS. | Completed |
+| 10 | Review the code, and run smoke tests: approve a seller, moderate a listing, manage a buyer account, create a second admin as a super-admin, process a withdrawal request, and update a banner. | Phase review done: code, docs, Postman collections and the DB Re-Design doc checked against each other and fixed; all smoke suites and every Postman collection pass. | Completed |
+| 11 | Review the code, and run smoke tests: withdrawal |  | Completed |
+| 11 | Get confirmation before moving on. |  | Completed |
+
+#### 2.3.2 Admin Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the Admin Dashboard screen, with the necessary data shown on screen — both in the Next.js admin UI and inside Django Admin. |  | Not started |
+| 2 | Build the Seller Management screens: create, update, list (with the right filters), details, and seller verification. |  | Not started |
+| 3 | Go back through the listing moderation implementation, review the code, find any mistakes, and fix them. |  | Not started |
+| 4 | Build the Buyer/User Management screens: create, update, list (with filters), and details. |  | Not started |
+| 5 | Build the Admin Management screens: create, update, list, and details for other admins, restricted to super-admins. |  | Not started |
+| 6 | Build the financial oversight screens: withdrawal requests, refunds, and commission settings. |  | Not started |
+| 7 | Build the site settings and CMS screens: banners, email templates, and the site logo. |  | Not started |
+| 8 | Build all of the screens above following the same theme and CSS as today (see the Planning document, Section 2.1). |  | Not started |
+| 9 | Confirm Django Admin is set up as a secondary, internal-only tool for the development team (see the Planning document, Section 8). |  | Not started |
+| 10 | Run smoke tests on every screen above. Write down every case tested. If a bug is found, fix it and test again. |  | Not started |
+| 11 | Get confirmation before moving on to Phase 3. |  | Not started |
+
+#### 2.3.3 Seller Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.3.4 Seller App
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.3.5 Buyer Web (Egoola Web)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.3.6 Buyer App (Egoola App)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+### 2.4 Phase 3 — The Seller Panel
+
+Based on the existing Seller Panel Specification document. Seller Login is not listed again here — it was already built and tested in Phase 1.
+
+A note before the steps below: this list is not fixed. Some of these steps may turn out to be unnecessary and get removed, and many more steps may need to be added, as the work actually happens.
+
+#### 2.4.1 Backend
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the seller onboarding and KYC API: identity document upload and verification. | Done: seller sign-up with NID/KYC uploads and public location lookups; the admin Seller Request queue (cursor paging, filters, newest-request order); approve / reject / pending; rejected sellers fix and resubmit; seller login with phone + password; account switch active / inactive / suspended; every profile change logged with before and after; files deleted from storage when media or an account is deleted. Docs: egoola-server/docs/Egoola_Seller_Guide.md (overview for everyone), seller-api-guide.md (seller side), seller-verification-guide.md (admin side). Postman: Egoola-SellerApp, Egoola-Seller. Smoke: seller_onboarding (162), seller_self (156), public_geography (45). | Completed |
+| 2 | Build the seller profile management API: update and upgrade the seller's profile, including the company profile. | Done: the seller edits their own profile (GET/PATCH /seller/me): name, photo, addresses and location, skills / education / experience / interest, and the company (business) profile; change password; email and phone locked (admin only); every change logged with before and after (admins see it). Documents are managed in the same call (NID and birth certificate locked once verified). Guide: egoola-server/docs/seller-api-guide.md section 5. Postman: Egoola-SellerApp. Smoke: seller_self (156). | Completed |
+| 3 | Build the listing management API for sellers: creating and managing every listing type, using one shared set of endpoints instead of the old app's six separate, duplicated ones. |  | Not started |
+| 4 | Build the freelance API: posting a gig, receiving bids, and hiring. |  | Not started |
+| 5 | Build the order management API: goods-order fulfillment from the seller's side — marking an order as shipped, delivered, and so on. |  | Not started |
+| 6 | Build the API for the seller's wallet, commission view, and withdrawal requests. |  | Not started |
+| 7 | Connect push notifications, such as new bids and order updates, to the seller app, using Firebase Cloud Messaging. |  | Not started |
+| 8 | Review the code, and run smoke tests: onboard a seller, update a profile, create and manage a listing, post a gig and receive a bid, fulfill an order, and submit a withdrawal request. |  | Not started |
+| 9 | Get confirmation before moving on. |  | Not started |
+
+#### 2.4.2 Admin Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.4.3 Seller Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build seller onboarding and KYC screens: identity document upload and verification. |  | Not started |
+| 2 | Build seller profile management screens: update and upgrade the seller's profile, including the company profile pages. |  | Not started |
+| 3 | Build listing management screens for sellers, covering every listing type, using one shared set of screens instead of the old app's six separate, duplicated ones. |  | Not started |
+| 4 | Build the freelance screens: posting a gig, viewing bids, and hiring. |  | Not started |
+| 5 | Build order management screens: goods-order fulfillment from the seller's side. |  | Not started |
+| 6 | Build the seller's wallet, commission view, and withdrawal request screens. |  | Not started |
+| 7 | Build all of the screens above following the same theme and CSS as today (see the Planning document, Section 2.1). |  | Not started |
+| 8 | Run smoke tests on every screen above. |  | Not started |
+| 9 | Get confirmation before moving on. |  | Not started |
+
+#### 2.4.4 Seller App
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build seller onboarding and KYC screens: identity document upload and verification. |  | Not started |
+| 2 | Build seller profile management screens: update and upgrade the seller's profile, including the company profile pages. |  | Not started |
+| 3 | Build listing management screens for sellers, covering every listing type. |  | Not started |
+| 4 | Build the freelance screens: posting a gig, viewing bids, and hiring. |  | Not started |
+| 5 | Build order management screens: goods-order fulfillment from the seller's side. |  | Not started |
+| 6 | Build the seller's wallet, commission view, and withdrawal request screens. |  | Not started |
+| 7 | Build all of the screens above following the same theme and CSS as today (see the Planning document, Sections 2.1 and 4.5). |  | Not started |
+| 8 | Connect push notifications, such as new bids and order updates, using Firebase Cloud Messaging. |  | Not started |
+| 9 | Run smoke tests on every screen above, and confirm a push notification actually arrives on a test device. |  | Not started |
+| 10 | Get confirmation before moving on to Phase 4. |  | Not started |
+
+#### 2.4.5 Buyer Web (Egoola Web)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.4.6 Buyer App (Egoola App)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+### 2.5 Phase 4 — The Buyer Panel
+
+Based on the existing Customer/Buyer Panel Specification document. This is the largest phase.
+
+A note before the steps below: this list is not fixed. Some of these steps may turn out to be unnecessary and get removed, and many more steps may need to be added, as the work actually happens.
+
+#### 2.5.1 Backend
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the browsing and search API, across every listing type. |  | Not started |
+| 2 | Build the shopping cart and wishlist (favourites) API. |  | Not started |
+| 3 | Build goods checkout, connected to Stripe. |  | Not started |
+| 4 | Build freelance hiring and bidding, from the buyer's side, connected to bKash. |  | Not started |
+| 5 | Build order tracking, delivery confirmation, and refund request APIs. |  | Not started |
+| 6 | Build the messaging API between buyers and sellers. |  | Not started |
+| 7 | Build the reviews API: a buyer leaving a review after a completed order. |  | Not started |
+| 8 | Build the buyer account and profile management API. |  | Not started |
+| 9 | Connect push notifications, such as order updates and new messages, using Firebase Cloud Messaging. |  | Not started |
+| 10 | Review the code, and run smoke tests: browse and search, add to cart and wishlist, complete a Stripe checkout, hire via bKash, track an order, send a message, leave a review, and update a profile. |  | Not started |
+| 11 | Get confirmation before moving on. |  | Not started |
+
+#### 2.5.2 Admin Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.5.3 Seller Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.5.4 Seller App
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.5.5 Buyer Web (Egoola Web)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build browsing and searching screens, across every listing type. |  | Not started |
+| 2 | Build the shopping cart and wishlist screens. |  | Not started |
+| 3 | Build goods checkout, connected to Stripe. |  | Not started |
+| 4 | Build freelance hiring and bidding screens, connected to bKash. |  | Not started |
+| 5 | Build order tracking, delivery confirmation, and refund request screens. |  | Not started |
+| 6 | Build messaging screens between buyers and sellers. |  | Not started |
+| 7 | Build review screens: a buyer leaving a review after a completed order. |  | Not started |
+| 8 | Build the buyer's own account and profile management screens. |  | Not started |
+| 9 | Build the (public) and (buyer) pages above, keeping the same overall look and layout as today (see the Planning document, Section 2.1). |  | Not started |
+| 10 | Run smoke tests on every screen above. |  | Not started |
+| 11 | Get confirmation before moving on. |  | Not started |
+
+#### 2.5.6 Buyer App (Egoola App)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build browsing and searching screens, across every listing type. |  | Not started |
+| 2 | Build the shopping cart and wishlist screens. |  | Not started |
+| 3 | Build goods checkout, connected to Stripe. |  | Not started |
+| 4 | Build freelance hiring and bidding screens, connected to bKash. |  | Not started |
+| 5 | Build order tracking, delivery confirmation, and refund request screens. |  | Not started |
+| 6 | Build messaging screens between buyers and sellers. |  | Not started |
+| 7 | Build review screens: a buyer leaving a review after a completed order. |  | Not started |
+| 8 | Build the buyer's own account and profile management screens. |  | Not started |
+| 9 | Build all of the screens above following the current mobile-responsive website closely (see the Planning document, Sections 2.1 and 4.5). |  | Not started |
+| 10 | Connect push notifications, such as order updates and new messages, using Firebase Cloud Messaging. |  | Not started |
+| 11 | Run smoke tests on every screen above, and confirm a push notification actually arrives on a test device. |  | Not started |
+| 12 | Get confirmation before moving on to Phase 5. |  | Not started |
+
+### 2.6 Phase 5 — Moving the Real Data Over
+
+A note before the steps below: this list is not fixed. Some of these steps may turn out to be unnecessary and get removed, and many more steps may need to be added, as the work actually happens.
+
+#### 2.6.1 Backend
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Update the existing migration tool, inside egoola-document/migration, so that it connects to PostgreSQL instead of MySQL for the new database. |  | Not started |
+| 2 | Review the code, and run smoke tests. |  | Not started |
+| 3 | Get confirmation before moving on. |  | Not started |
+| 4 | Run the migration tool against a full copy of the live data, not the real live data itself, as a first test. |  | Not started |
+| 5 | Check the row counts and the data itself after this first test run, to make sure nothing was lost or duplicated. |  | Not started |
+| 6 | Fix anything the test run reveals, and run it again until the result looks correct. |  | Not started |
+| 7 | Agree on a cutover date and time with the team. |  | Not started |
+| 8 | Run the migration tool one final time, against the real, live data, at the agreed cutover time. |  | Not started |
+
+#### 2.6.2 Admin Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.6.3 Seller Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.6.4 Seller App
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.6.5 Buyer Web (Egoola Web)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+#### 2.6.6 Buyer App (Egoola App)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | No tasks in this phase. |  | N/A |
+
+### 2.7 Phase 6 — Integration, Hardening, and Final QA
+
+A note before the steps below: this list is not fixed. Some of these steps may turn out to be unnecessary and get removed, and many more steps may need to be added, as the work actually happens.
+
+#### 2.7.1 Backend
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Connect Stripe and bKash on the server side, in a way that avoids double-charging a buyer if a request is accidentally sent twice (this is called making the payment “idempotent”). |  | Not started |
+| 2 | Review the code, and run smoke tests. |  | Not started |
+| 3 | Get confirmation before moving on. |  | Not started |
+| 4 | Go through every issue marked “Critical” in the original review of the old app, one by one, and confirm each one has actually been fixed in the new system. |  | Not started |
+| 5 | Test a full, real example from start to finish: a seller creates a listing, an admin approves it, a buyer buys or hires it, the seller fulfills the order, and the buyer leaves a review. |  | Not started |
+| 6 | Do a final review of both documents — the Planning document and this Phase Tracker — to check that everything they describe has actually been built. |  | Not started |
+| 7 | Get confirmation that the whole system is complete. |  | Not started |
+
+#### 2.7.2 Admin Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Go through every “Critical” issue relevant to the admin panel, and confirm it has actually been fixed. |  | Not started |
+| 2 | Get confirmation before moving on. |  | Not started |
+
+#### 2.7.3 Seller Web
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the payment-related screens inside the seller web pages, connected to Stripe and bKash, where relevant (for example, viewing payout status). |  | Not started |
+| 2 | Review the code, and run smoke tests. |  | Not started |
+| 3 | Go through every “Critical” issue relevant to the seller panel, and confirm it has actually been fixed. |  | Not started |
+| 4 | Get confirmation before moving on. |  | Not started |
+
+#### 2.7.4 Seller App
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the matching payment-related screens in the seller app. |  | Not started |
+| 2 | Review the code, and run smoke tests. |  | Not started |
+| 3 | Go through every “Critical” issue relevant to the seller app, and confirm it has actually been fixed. |  | Not started |
+| 4 | Get confirmation before moving on. |  | Not started |
+
+#### 2.7.5 Buyer Web (Egoola Web)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the payment screens inside Next.js, connected to Stripe and bKash. |  | Not started |
+| 2 | Review the code, and run smoke tests. |  | Not started |
+| 3 | Go through every “Critical” issue relevant to the buyer panel, and confirm it has actually been fixed. |  | Not started |
+| 4 | Get confirmation before moving on. |  | Not started |
+
+#### 2.7.6 Buyer App (Egoola App)
+
+| # | Task | Notes | Status |
+|---|---|---|---|
+| 1 | Build the matching payment screens in egoola-app. |  | Not started |
+| 2 | Review the code, and run smoke tests. |  | Not started |
+| 3 | Go through every “Critical” issue relevant to the buyer app, and confirm it has actually been fixed. |  | Not started |
+| 4 | Get confirmation before moving on. |  | Not started |
+
+---
+
+## Change log
+
+| Date | What changed |
+|---|---|
+| 2026-10-12 | Converted the tracker from Word to Markdown (Revision 3). All tasks and statuses copied unchanged. |
+| 2026-10-12 | The live board was rebuilt as a read-only view generated from this file (it used to keep its own, older copy of the statuses). 186 tasks shown; Skipped tasks and N/A layers are not counted in the progress. |
+| 2026-10-12 | Phase 3, Backend: row 2 (seller profile management) set to **Completed** (built together with row 1; no new work needed). |
+| 2026-10-12 | Phase 3, Backend: row 1 (seller onboarding and KYC) set to **Completed**; row 2 (seller profile management) set to **In progress**, waiting for a decision on what "upgrade" means. Details in the Notes. |
+
