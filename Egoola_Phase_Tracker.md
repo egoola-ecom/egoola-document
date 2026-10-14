@@ -288,14 +288,14 @@ A note before the steps below: this list is not fixed. Some of these steps may t
 
 | # | Task | Notes | Status |
 |---|---|---|---|
-| 1 | Build seller onboarding and KYC screens: identity document upload and verification. |  | Not started |
-| 2 | Build seller profile management screens: update and upgrade the seller's profile, including the company profile pages. |  | Not started |
-| 3 | Build listing management screens for sellers, covering every listing type, using one shared set of screens instead of the old app's six separate, duplicated ones. |  | Not started |
+| 1 | Build seller onboarding and KYC screens: identity document upload and verification. | Built in egoola-web: seller area with status banners, own profile and a Documents card (add, remove, replace the NID; locked after verification) and resubmit for a rejected application. Tested: egoola-web/docs/seller-smoke-tests.md. | Completed |
+| 2 | Build seller profile management screens: update and upgrade the seller's profile, including the company profile pages. | Built in egoola-web: My profile (details, address, skills, education, experience, business profile, photo) and Password. Tested: egoola-web/docs/seller-smoke-tests.md. The company profile pages and "upgrade" are covered by the business profile form (see Backend row 2). | Completed |
+| 3 | Build listing management screens for sellers, covering every listing type, using one shared set of screens instead of the old app's six separate, duplicated ones. | Built in egoola-web: Listing tab with Product and Gigs, create, details, edit, thumbnail. Audited and tested case by case in egoola-web/docs/listing-audit.md (27 browser cases, all Pass). | Completed |
 | 4 | Build the freelance screens: posting a gig, viewing bids, and hiring. | Postponed on 2026-10-14 with its backend row: built in Phase 4 together with the buyer side. | Postponed |
 | 5 | Build order management screens: goods-order fulfillment from the seller's side. | Postponed on 2026-10-14 with its backend row: built in Phase 4 together with the buyer side. | Postponed |
 | 6 | Build the seller's wallet, commission view, and withdrawal request screens. | Postponed on 2026-10-14 with its backend row: built in Phase 4 together with the buyer side. | Postponed |
-| 7 | Build all of the screens above following the same theme and CSS as today (see the Planning document, Section 2.1). |  | Not started |
-| 8 | Run smoke tests on every screen above. |  | Not started |
+| 7 | Build all of the screens above following the same theme and CSS as today (see the Planning document, Section 2.1). | Brand colour tokens and Geist font shared with the rest of the site; no horizontal scroll at 390, 768 and 1300 px. See egoola-web/docs/seller-smoke-tests.md, section 5. | Completed |
+| 8 | Run smoke tests on every screen above. | Browser cases over every seller state and screen, all Pass; one bug found and fixed (empty address read as null). Record: egoola-web/docs/seller-smoke-tests.md. Rows 4, 5 and 6 are Postponed and not part of this run. | Completed |
 | 9 | Get confirmation before moving on. |  | Not started |
 
 #### 2.4.4 Seller App
@@ -521,3 +521,4 @@ A note before the steps below: this list is not fixed. Some of these steps may t
 | 2026-10-13 | Admin Web: row **10.1** audited against the listing audit checklist; 14 gaps fixed (filters, price tier checks, partial product edit, media previews and seller gig media limits, thumbnail confirmation, 403 screens, badges) and all 27 browser test cases passed. Details in `egoola-web/docs/listing-audit.md`. |
 | 2026-10-14 | Phase 3: Backend rows **4** (gig hire requests), **4.1** (job and bidding), **5** (seller order management) and **6** (wallet, commission, withdrawals) set to **Postponed**, with the matching Seller Web and Seller App rows 4, 5 and 6. They need the buyer side (a buyer creates the order, hire request or job), so they will be built together with the buyer, seller and admin parts in Phase 4. Suggested Phase 4 order: buyer posts a job, seller bids, buyer accepts (creates the order), hire / fulfilment / delivery, payments, then wallet and withdrawals. Settle the Stripe / bKash and wallet decisions at the start of Phase 4. Rows 1–3.1 of Phase 3 Backend stay Completed. |
 | 2026-10-14 | Phase 3, Backend: row **7** (push notifications) set to **Postponed**, with Seller App row 8. Row **8** (code review and smoke tests) and row **9** (confirmation) set to **Completed** for the built scope (rows 1–3.1): independent review done, its findings fixed or recorded in the row 8 note, all 13 smoke suites pass. Phase 3 Backend is closed; rows 4, 4.1, 5, 6, 7 move to Phase 4 / later. |
+| 2026-10-14 | Phase 3, Seller Web: rows **1**, **2**, **3** (screens already built), **7** (theme) and **8** (smoke tests) set to **Completed**; record in `egoola-web/docs/seller-smoke-tests.md`. Row **9** (confirmation) is left for the project owner. Rows 4, 5 and 6 stay Postponed. |
