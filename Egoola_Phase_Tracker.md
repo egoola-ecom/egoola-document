@@ -335,7 +335,7 @@ A note before the steps below: this list is not fixed. Some of these steps may t
 
 | # | Task | Notes | Status |
 |---|---|---|---|
-| 1 | Build the browsing and search API, across every listing type. |  | Not started |
+| 1 | Build the browsing and search API, across every listing type. | Step 1 done on 2026-10-15: the category list `GET /api/v1/public/catalog/categories/` (top level by default, `parent_id` for children at any level, name search, active only, page-based paging with `page` / `page_size`, which is the pagination convention for every Buyer Panel list). Step 2 done on 2026-10-15: public product and gig lists and details (`/public/catalog/products/`, `/gigs/`) with filters (category with sub-categories, search, price range, in stock, brand, listing type, price type, delivery days, urgent, seller, location, ordering) and the public seller page (`/public/sellers/{id}/`). Only approved listings of verified, active sellers with an active SKU are public. | In progress |
 | 2 | Build the shopping cart and wishlist (favourites) API. |  | Not started |
 | 3 | Build goods checkout, connected to Stripe. |  | Not started |
 | 4 | Build freelance hiring and bidding, from the buyer's side, connected to bKash. |  | Not started |
@@ -369,15 +369,16 @@ A note before the steps below: this list is not fixed. Some of these steps may t
 
 | # | Task | Notes | Status |
 |---|---|---|---|
-| 1 | Build browsing and searching screens, across every listing type. |  | Not started |
-| 2 | Build the shopping cart and wishlist screens. |  | Not started |
-| 3 | Build goods checkout, connected to Stripe. |  | Not started |
-| 4 | Build freelance hiring and bidding screens, connected to bKash. |  | Not started |
-| 5 | Build order tracking, delivery confirmation, and refund request screens. |  | Not started |
-| 6 | Build messaging screens between buyers and sellers. |  | Not started |
-| 7 | Build review screens: a buyer leaving a review after a completed order. |  | Not started |
-| 8 | Build the buyer's own account and profile management screens. |  | Not started |
-| 9 | Build the (public) and (buyer) pages above, keeping the same overall look and layout as today (see the Planning document, Section 2.1). |  | Not started |
+| 1 | Build browsing and searching screens, across every listing type. | Built first with static data (no API calls yet); wired to the real API later, once Backend row 1 is done. Every Buyer Web route starts with `/buyer` (guest browsing included). | Not started |
+| 2 | Build the shopping cart and wishlist screens. | Static data first; wired to the API later (Backend row 2). | Not started |
+| 3 | Build goods checkout, connected to Stripe. | Static data first. Stripe is not connected in the static build: checkout creates a local order only. Wired to the API and Stripe later (Backend row 3). | Not started |
+| 4 | Build freelance hiring and bidding screens, connected to bKash. | Static data first. bKash is not connected in the static build. Includes hiring a gig by package and a buyer posting a job. Wired to the API later (Backend row 4). The seller-side screens postponed from Phase 3 (Seller Web rows 4, 5, 6) are built together with this and rows 5 to 8. | Not started |
+| 5 | Build order tracking, delivery confirmation, and refund request screens. | Static data first; wired to the API later (Backend row 5). | Not started |
+| 6 | Build messaging screens between buyers and sellers. | Static data first; wired to the API later (Backend row 6). | Not started |
+| 7 | Build review screens: a buyer leaving a review after a completed order. | Static data first; wired to the API later (Backend row 7). | Not started |
+| 8 | Build the buyer's own account and profile management screens. | Static data first; wired to the API later (Backend row 8). Buyer registration and login are Phase 1, Buyer Web (2.2.5). | Not started |
+| 9 | Build the (public) and (buyer) pages above, keeping the same overall look and layout as today (see the Planning document, Section 2.1). | Look and layout copied from the legacy site (`/Users/ghl/Github/webapp`: Bootstrap 4.4.1, `style.css`, `responsive.css`), scoped under one wrapper class so the admin and seller panels are not affected. Desktop and mobile layouts both. Layout changes follow the new database (one category tree, SKUs and options, gig packages, saved addresses). Built first: every other row uses it. Done so far: the frame (top bar, menus, footer), the home screen and the static pages (About Us, Help & Support, Terms, Privacy, Refund, three how-to pages). | In progress |
+| 9.1 | Build the static data layer for the Buyer Web: TypeScript types shaped like the new API (listings with SKUs, variants and price tiers; gigs with packages; categories as one tree; carts and cart items; orders and order items with the price saved at purchase; addresses; conversations; reviews; favourites; notifications; geography by id), fixtures ported from the Egoola App mock data and re-shaped, and one repository function per read or write, so that switching to the real API later changes one layer. | Cart, favourites, orders and the signed-in buyer are kept in the browser (local storage) until the API exists. | Not started |
 | 10 | Run smoke tests on every screen above. |  | Not started |
 | 11 | Get confirmation before moving on. |  | Not started |
 
@@ -523,3 +524,7 @@ A note before the steps below: this list is not fixed. Some of these steps may t
 | 2026-10-14 | Phase 3, Backend: row **7** (push notifications) set to **Postponed**, with Seller App row 8. Row **8** (code review and smoke tests) and row **9** (confirmation) set to **Completed** for the built scope (rows 1–3.1): independent review done, its findings fixed or recorded in the row 8 note, all 13 smoke suites pass. Phase 3 Backend is closed; rows 4, 4.1, 5, 6, 7 move to Phase 4 / later. |
 | 2026-10-14 | Phase 3, Seller Web: rows **1**, **2**, **3** (screens already built), **7** (theme) and **8** (smoke tests) set to **Completed**; record in `egoola-web/docs/seller-smoke-tests.md`. Row **9** (confirmation) is left for the project owner. Rows 4, 5 and 6 stay Postponed. |
 | 2026-10-15 | Phase 3, Backend: file handling redesigned. A file change never changes the listing status. Listing and gig create / update are now **JSON only** (multipart is 415). The thumbnail and the gallery have **4 multipart APIs** that work for a product or a gig id: `POST` / `PATCH /catalog/listing-files/{id}/` (admin) and `/seller/listing-files/{id}/` (seller). The 8 old `PUT` / `DELETE .../thumbnail/` endpoints and `media_file` / `media_delete_ids` on listings are removed. This is a **breaking change** for Admin Web and Seller Web (frontend prompts and the listing audit checklist updated). New smoke suite `listing_files_smoke.py` (130 checks). |
+| 2026-10-15 | Phase 4, Backend, row 1 started: Buyer Panel category list API (public, `parent_id` / `search` / `type`, page-based paging, composite index `categories_browse_idx`). Smoke `category_browse_smoke.py` (41 checks). |
+| 2026-10-15 | Phase 4, Backend, row 1: public product and gig APIs (list, detail, filters, ordering) and the public seller page; page-based paging now returns `{count, page, page_size, total_pages, results}`. Smoke `public_listing_smoke.py` (103 checks). |
+| 2026-10-15 | Phase 4, Backend: buyer sign-up API `POST /api/v1/auth/buyer/register/` (only name, mobile and password required; email, picture, address, location and profile lists optional; the buyer is logged in by the response). Buyer email is now optional, and a buyer logs in with phone or email. Smoke `buyer_register_smoke.py` (55 checks). Guide: `docs/buyer-api-guide.md`. OTP verification and password reset are not built yet. |
+| 2026-10-15 | Phase 4, Buyer Web: plan agreed. Screens are built first with static data (new row **9.1**: static data layer), then wired to the API as each Backend row is done. All Buyer Web routes start with `/buyer`. Look and layout (row **9**) is built first and set to **In progress**. Stripe and bKash are not connected in the static build. |
